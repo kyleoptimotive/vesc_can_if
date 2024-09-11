@@ -174,8 +174,6 @@ CallbackReturn VescHwInterface::on_configure(const rclcpp_lifecycle::State& /*pr
     {
       lower_limit = std::stod(info_.hardware_parameters["lower_limit"]);
     }
-    upper_limit = std::stod(info_.hardware_parameters["upper_limit"]);
-    lower_limit = std::stod(info_.hardware_parameters["lower_limit"]);
     // if (joint_limits_.has_position_limits)
     // {
     //   upper_limit = joint_limits_.max_position;
