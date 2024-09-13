@@ -21,6 +21,7 @@
 #include <numeric>
 #include <rclcpp/logging.hpp>
 #include <rclcpp/utilities.hpp>
+#include <rclcpp/wait_for_message.hpp>
 
 namespace vesc_hw_interface
 {
@@ -181,6 +182,8 @@ void VescServoController::init(hardware_interface::HardwareInfo& info,
     endstop_sub_ = node_->create_subscription<std_msgs::msg::Bool>(
         "endstop", rclcpp::SensorDataQoS(),
         std::bind(&VescServoController::endstopCallback, this, std::placeholders::_1));
+    std_msgs::msg::Bool endstop_msg;
+    rclcpp::wait_for_message(endstop_msg, node_, "endstop");
     while (endstop_sub_->get_publisher_count() == 0)
     {
       RCLCPP_INFO(rclcpp::get_logger("VescHwInterface"), "[Servo Control] Waiting for endstop sensor publisher...");
@@ -256,6 +259,7 @@ void VescServoController::init(hardware_interface::HardwareInfo& info,
   // Create timer callback for PID servo control
   // control_timer_ = nh.createTimer(ros::Duration(1.0 / control_rate_), &VescServoController::controlTimerCallback,
   // this);
+
   return;
 }
 
@@ -263,15 +267,6 @@ void VescServoController::control(const double control_rate)
 {
   if (sensor_initialize_)
     return;
-  // executes calibration
-  if (calibration_flag_)
-  {
-    calibrate();
-    // initializes/resets control variables
-    target_position_previous_ = calibration_position_;
-    vesc_step_difference_.resetStepDifference(position_steps_);
-    return;
-  }
 
   double error = target_position_ - sens_position_;
   // PID control
@@ -432,6 +427,10 @@ void VescServoController::executeCalibration()
 
 bool VescServoController::calibrate()
 {
+  if (!calibration_flag_)
+  {
+    return true;
+  }
   // sends a command for calibration
   if (calibration_mode_ == CURRENT_)
   {
