@@ -56,6 +56,7 @@ public:
   double getEffortSens();
   void executeCalibration();
   void updateSensor(const std::shared_ptr<VescPacket const>& packet);
+  bool calibrate();
 
 private:
   rclcpp::Node::SharedPtr node_;
@@ -104,7 +105,6 @@ private:
   double endstop_threshold_;
   double endstop_margin_;
 
-  bool calibrate();
   // void controlTimerCallback(const ros::TimerEvent& e);
   void endstopCallback(const std_msgs::msg::Bool::ConstSharedPtr& msg);
 };

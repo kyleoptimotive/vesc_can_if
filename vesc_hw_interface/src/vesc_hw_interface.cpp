@@ -20,6 +20,7 @@
 #include <hardware_interface/types/hardware_interface_type_values.hpp>
 #include <rclcpp/clock.hpp>
 #include <rclcpp/duration.hpp>
+#include <rclcpp/utilities.hpp>
 
 namespace vesc_hw_interface
 {
@@ -190,7 +191,14 @@ CallbackReturn VescHwInterface::on_configure(const rclcpp_lifecycle::State& /*pr
                            joint_type_ == "continuous" ? 1 :
                                                          2,
                            screw_lead_, upper_limit, lower_limit);
-    servo_controller_.spinSensorData();
+    while (rclcpp::ok())
+    {
+      vesc_interface_->requestState();
+      servo_controller_.spinSensorData();
+      if (servo_controller_.calibrate())
+        break;
+      rclcpp::sleep_for(std::chrono::milliseconds(10));
+    }
     position_ = servo_controller_.getPositionSens();
     velocity_ = servo_controller_.getVelocitySens();
     effort_ = servo_controller_.getEffortSens();
