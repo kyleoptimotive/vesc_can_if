@@ -191,13 +191,21 @@ CallbackReturn VescHwInterface::on_configure(const rclcpp_lifecycle::State& /*pr
                            joint_type_ == "continuous" ? 1 :
                                                          2,
                            screw_lead_, upper_limit, lower_limit);
-    while (rclcpp::ok())
+    bool calibration = true;
+    if (info_.hardware_parameters.find("servo/calibration") != info_.hardware_parameters.end())
     {
-      vesc_interface_->requestState();
-      servo_controller_.spinSensorData();
-      if (servo_controller_.calibrate())
-        break;
-      rclcpp::sleep_for(std::chrono::milliseconds(10));
+      calibration = info_.hardware_parameters["servo/calibration"] == "true";
+    }
+    if (calibration)
+    {
+      while (rclcpp::ok())
+      {
+        vesc_interface_->requestState();
+        servo_controller_.spinSensorData();
+        if (servo_controller_.calibrate())
+          break;
+        rclcpp::sleep_for(std::chrono::milliseconds(10));
+      }
     }
     position_ = servo_controller_.getPositionSens();
     velocity_ = servo_controller_.getVelocitySens();
