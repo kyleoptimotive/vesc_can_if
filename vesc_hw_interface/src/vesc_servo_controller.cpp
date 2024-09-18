@@ -353,7 +353,7 @@ void VescServoController::control(const double control_rate)
 
 void VescServoController::setTargetPosition(const double position)
 {
-  target_position_ = position;
+  target_position_ = std::clamp(position, lower_endstop_position_, upper_endstop_position_);
 }
 
 void VescServoController::setGearRatio(const double gear_ratio)
