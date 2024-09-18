@@ -151,10 +151,11 @@ void VescServoController::init(hardware_interface::HardwareInfo& info,
     RCLCPP_INFO(rclcpp::get_logger("VescHwInterface"), "[Servo Control] Latest position will be saved to %s",
                 calibration_result_path_.data());
   }
+
+  target_position_previous_ = target_position_ = std::numeric_limits<double>::quiet_NaN();
   if (!calibration_flag_)
   {
-    target_position_previous_ = target_position_;
-    sens_position_ = target_position_;
+    sens_position_ = 0.0;
 
     position_steps_ = sens_position_ * (num_hall_sensors_ * num_rotor_poles_) / gear_ratio_;
 
@@ -267,6 +268,12 @@ void VescServoController::control(const double control_rate)
 {
   if (sensor_initialize_)
     return;
+  if (std::isnan(target_position_))
+    return;
+  if (std::isnan(target_position_previous_))
+  {
+    target_position_previous_ = target_position_;
+  }
 
   double error = target_position_ - sens_position_;
   // PID control
@@ -467,7 +474,6 @@ bool VescServoController::calibrate()
         (calibration_mode_ == DUTY_ &&
          std::fabs(calibration_duty_ - calibration_strict_duty_) < std::numeric_limits<double>::epsilon()))
     {
-      target_position_ = calibration_position_;
       RCLCPP_INFO(rclcpp::get_logger("VescHwInterface"), "Calibration Finished");
       calibration_flag_ = false;
       return true;
@@ -489,7 +495,6 @@ bool VescServoController::calibrate()
       // finishes calibrating
       calibration_steps_ = 0;
       zero_position_ = sens_position_ - calibration_position_;
-      target_position_ = calibration_position_;
       RCLCPP_INFO(rclcpp::get_logger("VescHwInterface"), "Calibration Finished");
       calibration_flag_ = false;
       return true;
