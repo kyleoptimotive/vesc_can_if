@@ -21,6 +21,7 @@
 #include <rclcpp/clock.hpp>
 #include <rclcpp/duration.hpp>
 #include <rclcpp/utilities.hpp>
+#include <tinyxml2.h>
 
 namespace vesc_hw_interface
 {
@@ -161,20 +162,37 @@ CallbackReturn VescHwInterface::on_configure(const rclcpp_lifecycle::State& /*pr
   if (command_mode_ == hardware_interface::HW_IF_POSITION)
   {
     auto upper_limit = 0.0;
-    if (info_.hardware_parameters.find("upper_limit") != info_.hardware_parameters.end())
-    {
-      upper_limit = std::stod(info_.hardware_parameters["upper_limit"]);
-    }
     auto lower_limit = 0.0;
-    if (info_.hardware_parameters.find("lower_limit") != info_.hardware_parameters.end())
-    {
-      lower_limit = std::stod(info_.hardware_parameters["lower_limit"]);
+    // parse URDF for limit parameters
+    auto urdf = info_.original_xml;
+    if (!urdf.empty()) {
+      tinyxml2::XMLDocument doc;
+      if (doc.Parse(urdf.c_str()) != tinyxml2::XML_SUCCESS) {
+        RCLCPP_ERROR_STREAM(get_logger(), "Failed to parse URDF XML");
+        return hardware_interface::CallbackReturn::ERROR;
+      }
+      const tinyxml2::XMLElement * joint_it = doc.RootElement()->FirstChildElement("joint");
+      while (joint_it) {
+        const tinyxml2::XMLAttribute * name_attr = joint_it->FindAttribute("name");
+        const tinyxml2::XMLElement * limit_it = joint_it->FirstChildElement("limit");
+        if (name_attr && limit_it) {
+          const tinyxml2::XMLAttribute * upper_attr = limit_it->FindAttribute("upper");
+          const tinyxml2::XMLAttribute * lower_attr = limit_it->FindAttribute("lower");
+          std::string name = joint_it->Attribute("name");
+          if (name == joint_name_) {
+            if (upper_attr) {
+              upper_limit = std::atof(upper_attr->Value());
+            }
+            if (lower_attr) {
+              lower_limit = std::atof(lower_attr->Value());
+            }
+            break;
+          }
+        }
+        joint_it = joint_it->NextSiblingElement("joint");
+      }
     }
-    // if (joint_limits_.has_position_limits)
-    // {
-    //   upper_limit = joint_limits_.max_position;
-    //   lower_limit = joint_limits_.min_position;
-    // }
+
     // initializes the servo controller
     screw_lead_ = 1.0;
     if (info_.hardware_parameters.find("screw_lead") != info_.hardware_parameters.end())
