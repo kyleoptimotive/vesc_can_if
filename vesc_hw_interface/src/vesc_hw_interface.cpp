@@ -39,9 +39,6 @@ CallbackReturn VescHwInterface::on_init(const hardware_interface::HardwareInfo& 
     return CallbackReturn::ERROR;
   }
 
-  // initializes the joint name
-  joint_name_ = info_.hardware_parameters["joint_name"];
-
   // initializes commands and states
   command_ = std::numeric_limits<double>::quiet_NaN();
   position_ = 0.0;
@@ -89,8 +86,32 @@ CallbackReturn VescHwInterface::on_init(const hardware_interface::HardwareInfo& 
   command_mode_ = info_.hardware_parameters["command_mode"];
   RCLCPP_INFO(rclcpp::get_logger("VescHwInterface"), "mode: %s", command_mode_.data());
 
-  // check joint type
-  joint_type_ = info_.hardware_parameters["joint_type"];
+  const hardware_interface::ComponentInfo& joint = info_.joints[0];
+  joint_name_ = joint.name;
+
+  // parse URDF for joint type
+  auto urdf = info_.original_xml;
+  if (!urdf.empty()) {
+    tinyxml2::XMLDocument doc;
+    if (doc.Parse(urdf.c_str()) != tinyxml2::XML_SUCCESS) {
+      RCLCPP_ERROR_STREAM(get_logger(), "Failed to parse URDF XML");
+      return hardware_interface::CallbackReturn::ERROR;
+    }
+    const tinyxml2::XMLElement * joint_it = doc.RootElement()->FirstChildElement("joint");
+    while (joint_it) {
+      const tinyxml2::XMLAttribute * name_attr = joint_it->FindAttribute("name");
+      const tinyxml2::XMLAttribute * type_attr = joint_it->FindAttribute("type");
+      if (name_attr && type_attr) {
+        std::string name = joint_it->Attribute("name");
+        std::string type = joint_it->Attribute("type");
+        if (name == joint_name_) {
+          joint_type_ = type;
+          break;
+        }
+      }
+      joint_it = joint_it->NextSiblingElement("joint");
+    }
+  }
   RCLCPP_INFO(rclcpp::get_logger("VescHwInterface"), "joint type: %s", joint_type_.data());
   if ((joint_type_ != "revolute") && (joint_type_ != "continuous") && (joint_type_ != "prismatic"))
   {
@@ -98,8 +119,6 @@ CallbackReturn VescHwInterface::on_init(const hardware_interface::HardwareInfo& 
     return CallbackReturn::ERROR;
   }
 
-  const hardware_interface::ComponentInfo& joint = info_.joints[0];
-  joint_name_ = joint.name;
   if (joint.command_interfaces.size() != 3)
   {
     RCLCPP_FATAL(rclcpp::get_logger("VescHwInterface"), "Joint '%s' has %zu command interfaces found. 3 expected.",

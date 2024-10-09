@@ -31,7 +31,6 @@
       <param name="servo/endstop_threshold">0.8</param>
       <param name="servo/endstop_margin">0.02</param>
       <param name="command_mode">position</param>
-      <param name="joint_type">prismatic</param>
     </hardware>
     <joint name="vesc_joint">
       <command_interface name="position">
