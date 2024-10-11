@@ -468,6 +468,7 @@ bool VescServoController::calibrate()
          std::fabs(calibration_duty_ - calibration_strict_duty_) < std::numeric_limits<double>::epsilon()))
     {
       target_position_ = calibration_position_;
+      vesc_step_difference_.resetStepDifference(position_steps_);
       RCLCPP_INFO(rclcpp::get_logger("VescHwInterface"), "Calibration Finished");
       calibration_flag_ = false;
       return true;
@@ -490,6 +491,7 @@ bool VescServoController::calibrate()
       calibration_steps_ = 0;
       zero_position_ = sens_position_ - calibration_position_;
       target_position_ = calibration_position_;
+      vesc_step_difference_.resetStepDifference(position_steps_);
       RCLCPP_INFO(rclcpp::get_logger("VescHwInterface"), "Calibration Finished");
       calibration_flag_ = false;
       return true;
