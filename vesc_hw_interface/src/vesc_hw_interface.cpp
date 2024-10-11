@@ -39,8 +39,13 @@ CallbackReturn VescHwInterface::on_init(const hardware_interface::HardwareInfo& 
     return CallbackReturn::ERROR;
   }
 
-  // initializes commands and states
   command_ = std::numeric_limits<double>::quiet_NaN();
+  position_ = std::numeric_limits<double>::quiet_NaN();
+  velocity_ = std::numeric_limits<double>::quiet_NaN();
+  effort_ = std::numeric_limits<double>::quiet_NaN();
+
+  // initializes commands and states
+  command_ = 0.0;
   position_ = 0.0;
   velocity_ = 0.0;
   effort_ = 0.0;
@@ -301,6 +306,16 @@ std::vector<hardware_interface::CommandInterface> VescHwInterface::export_comman
 
 CallbackReturn VescHwInterface::on_activate(const rclcpp_lifecycle::State& /*previous_state*/)
 {
+  // Set some default values
+  if (std::isnan(position_))
+    position_ = 0;
+  if (std::isnan(velocity_))
+    velocity_ = 0;
+  if (std::isnan(effort_))
+    effort_ = 0;
+  if (std::isnan(command_))
+    command_ = 0;
+
   RCLCPP_INFO(rclcpp::get_logger("VescHwInterface"), "System successfully activated!");
   return CallbackReturn::SUCCESS;
 }
@@ -354,60 +369,45 @@ hardware_interface::return_type VescHwInterface::write(const rclcpp::Time& /*tim
     // limit_position_handle_.enforceLimits(period);
 
     // executes PID control
-    if (!std::isnan(command_))
-    {
-      servo_controller_.setTargetPosition(command_);
-      servo_controller_.control(1.0 / period.seconds());
-    }
+    servo_controller_.setTargetPosition(command_);
+    servo_controller_.control(1.0 / period.seconds());
   }
   else if (command_mode_ == "velocity")
   {
     // limit_velocity_interface_.enforceLimits(period);
 
     // converts the velocity unit: rad/s or m/s -> rpm -> erpm
-    if (!std::isnan(command_))
-    {
-      const double command_rpm = command_ * 60.0 / 2.0 / M_PI / gear_ratio_;
-      const double command_erpm = command_rpm * static_cast<double>(num_rotor_poles_) / 2;
+    const double command_rpm = command_ * 60.0 / 2.0 / M_PI / gear_ratio_;
+    const double command_erpm = command_rpm * static_cast<double>(num_rotor_poles_) / 2;
 
-      // sends a reference velocity command
-      vesc_interface_->setSpeed(command_erpm);
-    }
+    // sends a reference velocity command
+    vesc_interface_->setSpeed(command_erpm);
   }
   else if (command_mode_ == "velocity_duty")
   {
     // limit_velocity_interface_.enforceLimits(period);
 
     // executes PID control
-    if (!std::isnan(command_))
-    {
-      wheel_controller_.setTargetVelocity(command_);
-      wheel_controller_.control(1.0 / period.seconds());
-    }
+    wheel_controller_.setTargetVelocity(command_);
+    wheel_controller_.control(1.0 / period.seconds());
   }
   else if (command_mode_ == "effort")
   {
     // limit_effort_interface_.enforceLimits(period);
 
     // converts the command unit: Nm or N -> A
-    if (!std::isnan(command_))
-    {
-      const double command_current = command_ * gear_ratio_ / torque_const_;
+    const double command_current = command_ * gear_ratio_ / torque_const_;
 
-      // sends a reference current command
-      vesc_interface_->setCurrent(command_current);
-    }
+    // sends a reference current command
+    vesc_interface_->setCurrent(command_current);
   }
   else if (command_mode_ == "effort_duty")
   {
-    if (!std::isnan(command_))
-    {
-      command_ = std::max(-1.0, command_);
-      command_ = std::min(1.0, command_);
+    command_ = std::max(-1.0, command_);
+    command_ = std::min(1.0, command_);
 
-      // sends a  duty command
-      vesc_interface_->setDutyCycle(command_);
-    }
+    // sends a  duty command
+    vesc_interface_->setDutyCycle(command_);
   }
   return hardware_interface::return_type::OK;
 }
