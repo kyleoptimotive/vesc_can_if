@@ -268,6 +268,11 @@ void VescServoController::control(const double control_rate)
   if (sensor_initialize_)
     return;
 
+  if (std::isnan(target_position_))
+  {
+    target_position_ = calibration_position_;
+    vesc_step_difference_.resetStepDifference(position_steps_);
+  }
   double error = target_position_ - sens_position_;
   // PID control
   double step_diff = vesc_step_difference_.getStepDifference(position_steps_);
@@ -402,10 +407,6 @@ void VescServoController::spinSensorData()
 
 double VescServoController::getPositionSens()
 {
-  if (calibration_flag_)
-  {
-    return calibration_position_;
-  }
   return sens_position_;
 }
 
