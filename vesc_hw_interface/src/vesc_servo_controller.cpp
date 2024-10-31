@@ -490,7 +490,7 @@ bool VescServoController::calibrate()
     {
       // finishes calibrating
       calibration_steps_ = 0;
-      zero_position_ = sens_position_ - calibration_position_;
+      zero_position_ = sens_position_ + zero_position_ - calibration_position_;
       target_position_ = calibration_position_;
       vesc_step_difference_.resetStepDifference(position_steps_);
       RCLCPP_INFO(rclcpp::get_logger("VescHwInterface"), "Calibration Finished");
