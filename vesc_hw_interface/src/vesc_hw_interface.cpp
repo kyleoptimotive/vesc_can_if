@@ -187,33 +187,13 @@ CallbackReturn VescHwInterface::on_configure(const rclcpp_lifecycle::State& /*pr
     auto upper_limit = 0.0;
     auto lower_limit = 0.0;
     // parse URDF for limit parameters
-    auto urdf = info_.original_xml;
-    if (!urdf.empty()) {
-      tinyxml2::XMLDocument doc;
-      if (doc.Parse(urdf.c_str()) != tinyxml2::XML_SUCCESS) {
-        RCLCPP_ERROR_STREAM(get_logger(), "Failed to parse URDF XML");
-        return hardware_interface::CallbackReturn::ERROR;
-      }
-      const tinyxml2::XMLElement * joint_it = doc.RootElement()->FirstChildElement("joint");
-      while (joint_it) {
-        const tinyxml2::XMLAttribute * name_attr = joint_it->FindAttribute("name");
-        const tinyxml2::XMLElement * limit_it = joint_it->FirstChildElement("limit");
-        if (name_attr && limit_it) {
-          const tinyxml2::XMLAttribute * upper_attr = limit_it->FindAttribute("upper");
-          const tinyxml2::XMLAttribute * lower_attr = limit_it->FindAttribute("lower");
-          std::string name = joint_it->Attribute("name");
-          if (name == joint_name_) {
-            if (upper_attr) {
-              upper_limit = std::atof(upper_attr->Value());
-            }
-            if (lower_attr) {
-              lower_limit = std::atof(lower_attr->Value());
-            }
-            break;
-          }
-        }
-        joint_it = joint_it->NextSiblingElement("joint");
-      }
+    auto joint_limit_itr = info_.limits.find(joint_name_);
+    if (joint_limit_itr != info_.limits.end())
+    {
+      upper_limit = joint_limit_itr->second.max_position;
+      lower_limit = joint_limit_itr->second.min_position;
+    } else {
+      RCLCPP_WARN(rclcpp::get_logger("VescHwInterface"), "No joint position limits found in URDF, using default limits");
     }
 
     // initializes the servo controller
