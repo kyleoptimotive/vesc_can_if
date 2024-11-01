@@ -30,7 +30,6 @@ All of following parameters are in `${VESC_HW_INTERFACE_NODE_NAME}/` namespace.
 - `num_rotor_poles` (int, *default*: 2): the number of rotor poles.
 - `gear_ratio` (double, *default*: 1.0): ratio of reduction calculated by `joint velocity/motor velocity`.
 - `torque_const` (double, *default*: 1.0): motor torque constant (unit: Nm/A).
-- `robot_description_name` (string, *default*: /robot_description): name of the robot description parameters for loading joint limits
 
 **NOTE**: `gear_ratio` and `torque_const` are used to calculate joint states because VESC generally senses just motor position and motor current, neither joint position nor motor torque.
 If your motor unit has other structures, you should implement your own controller.
