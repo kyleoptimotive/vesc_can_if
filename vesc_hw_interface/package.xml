@@ -23,6 +23,7 @@
   <depend>joint_limits</depend>
   <depend>pluginlib</depend>
   <depend>std_msgs</depend>
+  <depend>tinyxml2_vendor</depend>
   <depend>urdf</depend>
   <depend>vesc_driver</depend>
 

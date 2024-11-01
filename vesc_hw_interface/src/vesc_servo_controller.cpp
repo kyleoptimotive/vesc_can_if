@@ -21,6 +21,7 @@
 #include <numeric>
 #include <rclcpp/logging.hpp>
 #include <rclcpp/utilities.hpp>
+#include <rclcpp/wait_for_message.hpp>
 
 namespace vesc_hw_interface
 {
@@ -181,6 +182,8 @@ void VescServoController::init(hardware_interface::HardwareInfo& info,
     endstop_sub_ = node_->create_subscription<std_msgs::msg::Bool>(
         "endstop", rclcpp::SensorDataQoS(),
         std::bind(&VescServoController::endstopCallback, this, std::placeholders::_1));
+    std_msgs::msg::Bool endstop_msg;
+    rclcpp::wait_for_message(endstop_msg, node_, "endstop");
     while (endstop_sub_->get_publisher_count() == 0)
     {
       RCLCPP_INFO(rclcpp::get_logger("VescHwInterface"), "[Servo Control] Waiting for endstop sensor publisher...");
@@ -256,6 +259,7 @@ void VescServoController::init(hardware_interface::HardwareInfo& info,
   // Create timer callback for PID servo control
   // control_timer_ = nh.createTimer(ros::Duration(1.0 / control_rate_), &VescServoController::controlTimerCallback,
   // this);
+
   return;
 }
 
@@ -263,16 +267,12 @@ void VescServoController::control(const double control_rate)
 {
   if (sensor_initialize_)
     return;
-  // executes calibration
-  if (calibration_flag_)
-  {
-    calibrate();
-    // initializes/resets control variables
-    target_position_previous_ = calibration_position_;
-    vesc_step_difference_.resetStepDifference(position_steps_);
-    return;
-  }
 
+  if (std::isnan(target_position_))
+  {
+    target_position_ = calibration_position_;
+    vesc_step_difference_.resetStepDifference(position_steps_);
+  }
   double error = target_position_ - sens_position_;
   // PID control
   double step_diff = vesc_step_difference_.getStepDifference(position_steps_);
@@ -351,7 +351,7 @@ void VescServoController::control(const double control_rate)
 
 void VescServoController::setTargetPosition(const double position)
 {
-  target_position_ = position;
+  target_position_ = std::clamp(position, lower_endstop_position_, upper_endstop_position_);
 }
 
 void VescServoController::setGearRatio(const double gear_ratio)
@@ -407,10 +407,6 @@ void VescServoController::spinSensorData()
 
 double VescServoController::getPositionSens()
 {
-  if (calibration_flag_)
-  {
-    return calibration_position_;
-  }
   return sens_position_;
 }
 
@@ -432,6 +428,10 @@ void VescServoController::executeCalibration()
 
 bool VescServoController::calibrate()
 {
+  if (!calibration_flag_)
+  {
+    return true;
+  }
   // sends a command for calibration
   if (calibration_mode_ == CURRENT_)
   {
@@ -469,6 +469,7 @@ bool VescServoController::calibrate()
          std::fabs(calibration_duty_ - calibration_strict_duty_) < std::numeric_limits<double>::epsilon()))
     {
       target_position_ = calibration_position_;
+      vesc_step_difference_.resetStepDifference(position_steps_);
       RCLCPP_INFO(rclcpp::get_logger("VescHwInterface"), "Calibration Finished");
       calibration_flag_ = false;
       return true;
@@ -489,8 +490,9 @@ bool VescServoController::calibrate()
     {
       // finishes calibrating
       calibration_steps_ = 0;
-      zero_position_ = sens_position_ - calibration_position_;
+      zero_position_ = sens_position_ + zero_position_ - calibration_position_;
       target_position_ = calibration_position_;
+      vesc_step_difference_.resetStepDifference(position_steps_);
       RCLCPP_INFO(rclcpp::get_logger("VescHwInterface"), "Calibration Finished");
       calibration_flag_ = false;
       return true;

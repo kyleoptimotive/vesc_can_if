@@ -20,6 +20,8 @@
 #include <hardware_interface/types/hardware_interface_type_values.hpp>
 #include <rclcpp/clock.hpp>
 #include <rclcpp/duration.hpp>
+#include <rclcpp/utilities.hpp>
+#include <tinyxml2.h>
 
 namespace vesc_hw_interface
 {
@@ -42,11 +44,7 @@ CallbackReturn VescHwInterface::on_init(const hardware_interface::HardwareInfo& 
   velocity_ = std::numeric_limits<double>::quiet_NaN();
   effort_ = std::numeric_limits<double>::quiet_NaN();
 
-  // initializes the joint name
-  joint_name_ = info_.hardware_parameters["joint_name"];
-
   // initializes commands and states
-  command_ = 0.0;
   position_ = 0.0;
   velocity_ = 0.0;
   effort_ = 0.0;
@@ -92,8 +90,32 @@ CallbackReturn VescHwInterface::on_init(const hardware_interface::HardwareInfo& 
   command_mode_ = info_.hardware_parameters["command_mode"];
   RCLCPP_INFO(rclcpp::get_logger("VescHwInterface"), "mode: %s", command_mode_.data());
 
-  // check joint type
-  joint_type_ = info_.hardware_parameters["joint_type"];
+  const hardware_interface::ComponentInfo& joint = info_.joints[0];
+  joint_name_ = joint.name;
+
+  // parse URDF for joint type
+  auto urdf = info_.original_xml;
+  if (!urdf.empty()) {
+    tinyxml2::XMLDocument doc;
+    if (doc.Parse(urdf.c_str()) != tinyxml2::XML_SUCCESS) {
+      RCLCPP_ERROR_STREAM(get_logger(), "Failed to parse URDF XML");
+      return hardware_interface::CallbackReturn::ERROR;
+    }
+    const tinyxml2::XMLElement * joint_it = doc.RootElement()->FirstChildElement("joint");
+    while (joint_it) {
+      const tinyxml2::XMLAttribute * name_attr = joint_it->FindAttribute("name");
+      const tinyxml2::XMLAttribute * type_attr = joint_it->FindAttribute("type");
+      if (name_attr && type_attr) {
+        std::string name = joint_it->Attribute("name");
+        std::string type = joint_it->Attribute("type");
+        if (name == joint_name_) {
+          joint_type_ = type;
+          break;
+        }
+      }
+      joint_it = joint_it->NextSiblingElement("joint");
+    }
+  }
   RCLCPP_INFO(rclcpp::get_logger("VescHwInterface"), "joint type: %s", joint_type_.data());
   if ((joint_type_ != "revolute") && (joint_type_ != "continuous") && (joint_type_ != "prismatic"))
   {
@@ -101,8 +123,6 @@ CallbackReturn VescHwInterface::on_init(const hardware_interface::HardwareInfo& 
     return CallbackReturn::ERROR;
   }
 
-  const hardware_interface::ComponentInfo& joint = info_.joints[0];
-  joint_name_ = joint.name;
   if (joint.command_interfaces.size() != 3)
   {
     RCLCPP_FATAL(rclcpp::get_logger("VescHwInterface"), "Joint '%s' has %zu command interfaces found. 3 expected.",
@@ -165,20 +185,17 @@ CallbackReturn VescHwInterface::on_configure(const rclcpp_lifecycle::State& /*pr
   if (command_mode_ == hardware_interface::HW_IF_POSITION)
   {
     auto upper_limit = 0.0;
-    if (info_.hardware_parameters.find("upper_limit") != info_.hardware_parameters.end())
-    {
-      upper_limit = std::stod(info_.hardware_parameters["upper_limit"]);
-    }
     auto lower_limit = 0.0;
-    if (info_.hardware_parameters.find("lower_limit") != info_.hardware_parameters.end())
+    // parse URDF for limit parameters
+    auto joint_limit_itr = info_.limits.find(joint_name_);
+    if (joint_limit_itr != info_.limits.end())
     {
-      lower_limit = std::stod(info_.hardware_parameters["lower_limit"]);
+      upper_limit = joint_limit_itr->second.max_position;
+      lower_limit = joint_limit_itr->second.min_position;
+    } else {
+      RCLCPP_WARN(rclcpp::get_logger("VescHwInterface"), "No joint position limits found in URDF, using default limits");
     }
-    // if (joint_limits_.has_position_limits)
-    // {
-    //   upper_limit = joint_limits_.max_position;
-    //   lower_limit = joint_limits_.min_position;
-    // }
+
     // initializes the servo controller
     screw_lead_ = 1.0;
     if (info_.hardware_parameters.find("screw_lead") != info_.hardware_parameters.end())
@@ -190,7 +207,22 @@ CallbackReturn VescHwInterface::on_configure(const rclcpp_lifecycle::State& /*pr
                            joint_type_ == "continuous" ? 1 :
                                                          2,
                            screw_lead_, upper_limit, lower_limit);
-    servo_controller_.spinSensorData();
+    bool calibration = true;
+    if (info_.hardware_parameters.find("servo/calibration") != info_.hardware_parameters.end())
+    {
+      calibration = info_.hardware_parameters["servo/calibration"] == "true";
+    }
+    if (calibration)
+    {
+      while (rclcpp::ok())
+      {
+        vesc_interface_->requestState();
+        servo_controller_.spinSensorData();
+        if (servo_controller_.calibrate())
+          break;
+        rclcpp::sleep_for(std::chrono::milliseconds(10));
+      }
+    }
     position_ = servo_controller_.getPositionSens();
     velocity_ = servo_controller_.getVelocitySens();
     effort_ = servo_controller_.getEffortSens();
@@ -260,8 +292,6 @@ CallbackReturn VescHwInterface::on_activate(const rclcpp_lifecycle::State& /*pre
     velocity_ = 0;
   if (std::isnan(effort_))
     effort_ = 0;
-  if (std::isnan(command_))
-    command_ = 0;
 
   RCLCPP_INFO(rclcpp::get_logger("VescHwInterface"), "System successfully activated!");
   return CallbackReturn::SUCCESS;
@@ -309,6 +339,11 @@ hardware_interface::return_type VescHwInterface::read(const rclcpp::Time& /*time
 hardware_interface::return_type VescHwInterface::write(const rclcpp::Time& /*time*/, const rclcpp::Duration& period)
 {
   // sends commands
+
+  auto command = command_;
+  if (std::isnan(command) && command_mode_ != "position") {
+    command = 0.0;
+  }
   if (command_mode_ == "position")
   {
     // Limit the speed using the parameters listed in xacro
@@ -316,7 +351,7 @@ hardware_interface::return_type VescHwInterface::write(const rclcpp::Time& /*tim
     // limit_position_handle_.enforceLimits(period);
 
     // executes PID control
-    servo_controller_.setTargetPosition(command_);
+    servo_controller_.setTargetPosition(command);
     servo_controller_.control(1.0 / period.seconds());
   }
   else if (command_mode_ == "velocity")
@@ -324,7 +359,7 @@ hardware_interface::return_type VescHwInterface::write(const rclcpp::Time& /*tim
     // limit_velocity_interface_.enforceLimits(period);
 
     // converts the velocity unit: rad/s or m/s -> rpm -> erpm
-    const double command_rpm = command_ * 60.0 / 2.0 / M_PI / gear_ratio_;
+    const double command_rpm = command * 60.0 / 2.0 / M_PI / gear_ratio_;
     const double command_erpm = command_rpm * static_cast<double>(num_rotor_poles_) / 2;
 
     // sends a reference velocity command
@@ -335,7 +370,7 @@ hardware_interface::return_type VescHwInterface::write(const rclcpp::Time& /*tim
     // limit_velocity_interface_.enforceLimits(period);
 
     // executes PID control
-    wheel_controller_.setTargetVelocity(command_);
+    wheel_controller_.setTargetVelocity(command);
     wheel_controller_.control(1.0 / period.seconds());
   }
   else if (command_mode_ == "effort")
@@ -343,18 +378,18 @@ hardware_interface::return_type VescHwInterface::write(const rclcpp::Time& /*tim
     // limit_effort_interface_.enforceLimits(period);
 
     // converts the command unit: Nm or N -> A
-    const double command_current = command_ * gear_ratio_ / torque_const_;
+    const double command_current = command * gear_ratio_ / torque_const_;
 
     // sends a reference current command
     vesc_interface_->setCurrent(command_current);
   }
   else if (command_mode_ == "effort_duty")
   {
-    command_ = std::max(-1.0, command_);
-    command_ = std::min(1.0, command_);
+    command = std::max(-1.0, command);
+    command = std::min(1.0, command);
 
     // sends a  duty command
-    vesc_interface_->setDutyCycle(command_);
+    vesc_interface_->setDutyCycle(command);
   }
   return hardware_interface::return_type::OK;
 }

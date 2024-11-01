@@ -9,8 +9,6 @@
       <param name="num_hall_sensors">3</param>
       <param name="screw_lead">1.0</param>
       <param name="num_rotor_poles">20</param>
-      <param name="upper_limit">0.42</param>
-      <param name="lower_limit">0.0</param>
       <param name="servo/Kp">0.005</param>
       <param name="servo/Ki">0.005</param>
       <param name="servo/Kd">0.0025</param>
@@ -33,7 +31,6 @@
       <param name="servo/endstop_threshold">0.8</param>
       <param name="servo/endstop_margin">0.02</param>
       <param name="command_mode">position</param>
-      <param name="joint_type">prismatic</param>
     </hardware>
     <joint name="vesc_joint">
       <command_interface name="position">
