@@ -1,5 +1,0 @@
-repositories:
-  transport_drivers:
-    type: git
-    url: git@github.com:ros-drivers/transport_drivers.git
-    version: main
