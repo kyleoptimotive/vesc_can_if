@@ -115,8 +115,31 @@ VescPacket::VescPacket(const std::string& name, std::shared_ptr<VescFrame> raw) 
   payload_end_.second = std::min(payload_end_.first + original_payload_size, frame_.end());
 }
 
+void VescPacket::appendCRC()
+{
+  VescFrame::CRC crc_calc;
+  crc_calc.process_bytes(&(*payload_end_.first), boost::distance(payload_end_));
+  uint16_t crc = crc_calc.checksum();
+  *(frame_.end() - 3) = static_cast<uint8_t>(crc >> 8);
+  *(frame_.end() - 2) = static_cast<uint8_t>(crc & 0xFF);
+}
+
 /*------------------------------------------------------------------*/
 
+/* CAN PACKETS 
+ * @brief Constructor
+ * @param raw Pointer of VescFrame
+ * @param can_id CAN ID
+ **/
+VescPacketCAN::VescPacketCAN(const std::string& name, int payload_size, int payload_id, uint8_t can_id)
+  : VescPacket(name, payload_size + 2, COMM_FORWARD_CAN)
+{
+  *(payload_end_.first + 1) = can_id;
+  *(payload_end_.first + 2) = payload_id;
+}
+
+
+/*------------------------------------------------------------------*/
 /**
  * @brief Constructor
  * @param raw Pointer of VescFrame
@@ -150,11 +173,7 @@ int16_t VescPacketFWVersion::fwMinor() const
  **/
 VescPacketRequestFWVersion::VescPacketRequestFWVersion() : VescPacket("RequestFWVersion", 1, COMM_FW_VERSION)
 {
-  VescFrame::CRC crc_calc;
-  crc_calc.process_bytes(&(*payload_end_.first), boost::distance(payload_end_));
-  uint16_t crc = crc_calc.checksum();
-  *(frame_.end() - 3) = static_cast<uint8_t>(crc >> 8);
-  *(frame_.end() - 2) = static_cast<uint8_t>(crc & 0xFF);
+  appendCRC();
 }
 
 /*------------------------------------------------------------------*/
@@ -333,11 +352,7 @@ double VescPacketValues::readBuffer(const uint8_t map_id, const uint8_t size) co
  **/
 VescPacketRequestValues::VescPacketRequestValues() : VescPacket("RequestFWVersion", 1, COMM_GET_VALUES)
 {
-  VescFrame::CRC crc_calc;
-  crc_calc.process_bytes(&(*payload_end_.first), boost::distance(payload_end_));
-  uint16_t crc = crc_calc.checksum();
-  *(frame_.end() - 3) = static_cast<uint8_t>(crc >> 8);
-  *(frame_.end() - 2) = static_cast<uint8_t>(crc & 0xFF);
+  appendCRC();
 }
 
 /*------------------------------------------------------------------*/
@@ -364,11 +379,7 @@ VescPacketSetDuty::VescPacketSetDuty(double duty) : VescPacket("SetDuty", 5, COM
   *(payload_end_.first + 3) = static_cast<uint8_t>((v >> 8) & 0xFF);
   *(payload_end_.first + 4) = static_cast<uint8_t>(v & 0xFF);
 
-  VescFrame::CRC crc_calc;
-  crc_calc.process_bytes(&(*payload_end_.first), boost::distance(payload_end_));
-  uint16_t crc = crc_calc.checksum();
-  *(frame_.end() - 3) = static_cast<uint8_t>(crc >> 8);
-  *(frame_.end() - 2) = static_cast<uint8_t>(crc & 0xFF);
+  appendCRC();
 }
 
 /*------------------------------------------------------------------*/
@@ -385,11 +396,7 @@ VescPacketSetCurrent::VescPacketSetCurrent(double current) : VescPacket("SetCurr
   *(payload_end_.first + 3) = static_cast<uint8_t>((v >> 8) & 0xFF);
   *(payload_end_.first + 4) = static_cast<uint8_t>(v & 0xFF);
 
-  VescFrame::CRC crc_calc;
-  crc_calc.process_bytes(&(*payload_end_.first), boost::distance(payload_end_));
-  uint16_t crc = crc_calc.checksum();
-  *(frame_.end() - 3) = static_cast<uint8_t>(crc >> 8);
-  *(frame_.end() - 2) = static_cast<uint8_t>(crc & 0xFF);
+  appendCRC();
 }
 
 /*------------------------------------------------------------------*/
@@ -407,11 +414,7 @@ VescPacketSetCurrentBrake::VescPacketSetCurrentBrake(double current_brake)
   *(payload_end_.first + 3) = static_cast<uint8_t>((v >> 8) & 0xFF);
   *(payload_end_.first + 4) = static_cast<uint8_t>(v & 0xFF);
 
-  VescFrame::CRC crc_calc;
-  crc_calc.process_bytes(&(*payload_end_.first), boost::distance(payload_end_));
-  uint16_t crc = crc_calc.checksum();
-  *(frame_.end() - 3) = static_cast<uint8_t>(crc >> 8);
-  *(frame_.end() - 2) = static_cast<uint8_t>(crc & 0xFF);
+  appendCRC();
 }
 
 /*------------------------------------------------------------------*/
@@ -428,11 +431,7 @@ VescPacketSetVelocityERPM::VescPacketSetVelocityERPM(double vel_erpm) : VescPack
   *(payload_end_.first + 3) = static_cast<uint8_t>((v >> 8) & 0xFF);
   *(payload_end_.first + 4) = static_cast<uint8_t>(v & 0xFF);
 
-  VescFrame::CRC crc_calc;
-  crc_calc.process_bytes(&(*payload_end_.first), boost::distance(payload_end_));
-  uint16_t crc = crc_calc.checksum();
-  *(frame_.end() - 3) = static_cast<uint8_t>(crc >> 8);
-  *(frame_.end() - 2) = static_cast<uint8_t>(crc & 0xFF);
+  appendCRC();
 }
 
 /*------------------------------------------------------------------*/
@@ -451,11 +450,7 @@ VescPacketSetPos::VescPacketSetPos(double pos) : VescPacket("SetPos", 5, COMM_SE
   *(payload_end_.first + 3) = static_cast<uint8_t>((v >> 8) & 0xFF);
   *(payload_end_.first + 4) = static_cast<uint8_t>(v & 0xFF);
 
-  VescFrame::CRC crc_calc;
-  crc_calc.process_bytes(&(*payload_end_.first), boost::distance(payload_end_));
-  uint16_t crc = crc_calc.checksum();
-  *(frame_.end() - 3) = static_cast<uint8_t>(crc >> 8);
-  *(frame_.end() - 2) = static_cast<uint8_t>(crc & 0xFF);
+  appendCRC();
 }
 
 /*------------------------------------------------------------------*/
@@ -472,11 +467,7 @@ VescPacketSetServoPos::VescPacketSetServoPos(double servo_pos) : VescPacket("Set
   *(payload_end_.first + 1) = static_cast<uint8_t>((v >> 8) & 0xFF);
   *(payload_end_.first + 2) = static_cast<uint8_t>(v & 0xFF);
 
-  VescFrame::CRC crc_calc;
-  crc_calc.process_bytes(&(*payload_end_.first), boost::distance(payload_end_));
-  uint16_t crc = crc_calc.checksum();
-  *(frame_.end() - 3) = static_cast<uint8_t>(crc >> 8);
-  *(frame_.end() - 2) = static_cast<uint8_t>(crc & 0xFF);
+  appendCRC();
 }
 
 /*------------------------------------------------------------------*/
@@ -493,5 +484,105 @@ VescPacketSetDetect::VescPacketSetDetect(uint8_t mode) :
   *(frame_->end() - 2) = static_cast<uint8_t>(crc & 0xFF);
 }
 */
+
+/*------------------------------------------------------------------*/
+
+/**
+ * @brief Constructor
+ **/
+VescPacketCANSetDuty::VescPacketCANSetDuty(double duty, uint8_t can_id)
+: VescPacketCAN("CANSetDuty", 5, COMM_SET_DUTY, can_id)
+{
+  if (duty > 1.0) {
+    duty = 1.0;
+  } else if (duty < -1.0) {
+    duty = -1.0;
+  }
+
+  const int32_t v = static_cast<int32_t>(duty * 100000.0);
+
+  *(payload_end_.first + 3) = static_cast<uint8_t>((v >> 24) & 0xFF);
+  *(payload_end_.first + 4) = static_cast<uint8_t>((v >> 16) & 0xFF);
+  *(payload_end_.first + 5) = static_cast<uint8_t>((v >> 8) & 0xFF);
+  *(payload_end_.first + 6) = static_cast<uint8_t>(v & 0xFF);
+}
+
+/*------------------------------------------------------------------*/
+
+/**
+ * @brief Constructor
+ **/
+VescPacketCANSetCurrent::VescPacketCANSetCurrent(double current, uint8_t can_id)
+: VescPacketCAN("CANSetCurrent", 5, COMM_SET_CURRENT, can_id)
+{
+  const int32_t v = static_cast<int32_t>(current * 1000.0);
+
+  *(payload_end_.first + 3) = static_cast<uint8_t>((v >> 24) & 0xFF);
+  *(payload_end_.first + 4) = static_cast<uint8_t>((v >> 16) & 0xFF);
+  *(payload_end_.first + 5) = static_cast<uint8_t>((v >> 8) & 0xFF);
+  *(payload_end_.first + 6) = static_cast<uint8_t>(v & 0xFF);
+}
+
+/*------------------------------------------------------------------*/
+
+/**
+ * @brief Constructor
+ **/
+VescPacketCANSetCurrentBrake::VescPacketCANSetCurrentBrake(double current_brake, uint8_t can_id)
+: VescPacketCAN("CANSetCurrentBrake", 5, COMM_SET_CURRENT_BRAKE, can_id)
+{
+  const int32_t v = static_cast<int32_t>(current_brake * 1000.0);
+
+  *(payload_end_.first + 3) = static_cast<uint8_t>((v >> 24) & 0xFF);
+  *(payload_end_.first + 4) = static_cast<uint8_t>((v >> 16) & 0xFF);
+  *(payload_end_.first + 5) = static_cast<uint8_t>((v >> 8) & 0xFF);
+  *(payload_end_.first + 6) = static_cast<uint8_t>(v & 0xFF);
+}
+
+/*------------------------------------------------------------------*/
+
+/**
+ * @brief Constructor
+ **/
+VescPacketCANSetVelocityERPM::VescPacketCANSetVelocityERPM(double vel_erpm, uint8_t can_id)
+: VescPacketCAN("CANSetVelocityERPM", 5, COMM_SET_ERPM, can_id)
+{
+  const int32_t v = static_cast<int32_t>(vel_erpm);
+
+  *(payload_end_.first + 3) = static_cast<uint8_t>((v >> 24) & 0xFF);
+  *(payload_end_.first + 4) = static_cast<uint8_t>((v >> 16) & 0xFF);
+  *(payload_end_.first + 5) = static_cast<uint8_t>((v >> 8) & 0xFF);
+  *(payload_end_.first + 6) = static_cast<uint8_t>(v & 0xFF);
+}
+
+/*------------------------------------------------------------------*/
+
+/**
+ * @brief Constructor
+ **/
+VescPacketCANSetPosition::VescPacketCANSetPosition(double pos, uint8_t can_id)
+: VescPacketCAN("CANSetPosition", 5, COMM_SET_POS, can_id)
+{
+  const int32_t v = static_cast<int32_t>(pos * 1000000.0);
+
+  *(payload_end_.first + 3) = static_cast<uint8_t>((v >> 24) & 0xFF);
+  *(payload_end_.first + 4) = static_cast<uint8_t>((v >> 16) & 0xFF);
+  *(payload_end_.first + 5) = static_cast<uint8_t>((v >> 8) & 0xFF);
+  *(payload_end_.first + 6) = static_cast<uint8_t>(v & 0xFF);
+}
+
+/*------------------------------------------------------------------*/
+
+/**
+ * @brief Constructor
+ **/
+VescPacketCANSetServoPos::VescPacketCANSetServoPos(double servo_pos, uint8_t can_id)
+: VescPacketCAN("CANSetServoPos", 5, COMM_SET_SERVO_POS, can_id)
+{
+  uint16_t v = static_cast<uint16_t>(servo_pos * 1000.0);
+
+  *(payload_end_.first + 3) = static_cast<uint8_t>((v >> 8) & 0xFF);
+  *(payload_end_.first + 4) = static_cast<uint8_t>(v & 0xFF);
+}
 
 }  // namespace vesc_driver

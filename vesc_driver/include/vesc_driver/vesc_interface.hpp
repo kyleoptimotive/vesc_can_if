@@ -124,12 +124,12 @@ public:
 
   void requestFWVersion();
   void requestState();
-  void setDutyCycle(double duty_cycle);
-  void setCurrent(double current);
-  void setBrake(double brake);
-  void setSpeed(double speed);
-  void setPosition(double position);
-  void setServo(double servo);
+  void setDutyCycle(double duty_cycle, uint8_t can_id = 0);
+  void setCurrent(double current, uint8_t can_id = 0);
+  void setBrake(double brake, uint8_t can_id = 0);
+  void setSpeed(double speed, uint8_t can_id = 0);
+  void setPosition(double position, uint8_t can_id = 0);
+  void setServo(double servo, uint8_t can_id = 0);
 
 private:
   // Pimpl - hide serial port members from class users

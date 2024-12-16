@@ -271,34 +271,58 @@ void VescInterface::requestState()
   send(VescPacketRequestValues());
 }
 
-void VescInterface::setDutyCycle(double duty_cycle)
+void VescInterface::setDutyCycle(double duty_cycle, uint8_t can_id)
 {
-  send(VescPacketSetDuty(duty_cycle));
+  if (can_id > 0) {
+    send(VescPacketCANSetDuty(duty_cycle, can_id));
+  } else {
+    send(VescPacketSetDuty(duty_cycle));
+  }
 }
 
-void VescInterface::setCurrent(double current)
+void VescInterface::setCurrent(double current, uint8_t can_id)
 {
-  send(VescPacketSetCurrent(current));
+  if (can_id > 0) {
+    send(VescPacketCANSetCurrent(current, can_id));
+  } else {
+    send(VescPacketSetCurrent(current));
+  }
 }
 
-void VescInterface::setBrake(double brake)
+void VescInterface::setBrake(double brake, uint8_t can_id)
 {
-  send(VescPacketSetCurrentBrake(brake));
+  if (can_id > 0) {
+    send(VescPacketCANSetCurrentBrake(brake, can_id));
+  } else {
+    send(VescPacketSetCurrentBrake(brake));
+  }
 }
 
-void VescInterface::setSpeed(double speed)
+void VescInterface::setSpeed(double speed, uint8_t can_id)
 {
-  send(VescPacketSetVelocityERPM(speed));
+  if (can_id > 0) {
+    send(VescPacketCANSetVelocityERPM(speed, can_id));
+  } else {
+    send(VescPacketSetVelocityERPM(speed));
+  }
 }
 
-void VescInterface::setPosition(double position)
+void VescInterface::setPosition(double position, uint8_t can_id)
 {
-  send(VescPacketSetPos(position));
+  if (can_id > 0) {
+    send(VescPacketCANSetPosition(position, can_id));
+  } else {
+    send(VescPacketSetPos(position));
+  }
 }
 
-void VescInterface::setServo(double servo)
+void VescInterface::setServo(double servo, uint8_t can_id)
 {
-  send(VescPacketSetServoPos(servo));
+  if (can_id > 0) {
+    send(VescPacketCANSetServoPos(servo, can_id));
+  } else {
+    send(VescPacketSetServoPos(servo));
+  }
 }
 
 }  // namespace vesc_driver
