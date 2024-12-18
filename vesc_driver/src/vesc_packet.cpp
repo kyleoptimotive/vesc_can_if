@@ -125,21 +125,6 @@ void VescPacket::appendCRC()
 }
 
 /*------------------------------------------------------------------*/
-
-/* CAN PACKETS 
- * @brief Constructor
- * @param raw Pointer of VescFrame
- * @param can_id CAN ID
- **/
-VescPacketCAN::VescPacketCAN(const std::string& name, int payload_size, int payload_id, uint8_t can_id)
-  : VescPacket(name, payload_size + 2, COMM_FORWARD_CAN)
-{
-  *(payload_end_.first + 1) = can_id;
-  *(payload_end_.first + 2) = payload_id;
-}
-
-
-/*------------------------------------------------------------------*/
 /**
  * @brief Constructor
  * @param raw Pointer of VescFrame
@@ -490,21 +475,27 @@ VescPacketSetDetect::VescPacketSetDetect(uint8_t mode) :
 /**
  * @brief Constructor
  **/
-VescPacketCANSetDuty::VescPacketCANSetDuty(double duty, uint8_t can_id)
-: VescPacketCAN("CANSetDuty", 5, COMM_SET_DUTY, can_id)
+VescPacketCANSetDuty::VescPacketCANSetDuty(double duty, uint8_t can_id) : VescPacket("CANSetDuty", 7, COMM_FORWARD_CAN)
 {
+  // Set up CAN forward packet structure
+  *(payload_end_.first + 1) = can_id;
+  *(payload_end_.first + 2) = COMM_SET_DUTY;
+
+  // Range check duty
   if (duty > 1.0) {
     duty = 1.0;
   } else if (duty < -1.0) {
     duty = -1.0;
   }
 
+  // Pack the duty value into the payload
   const int32_t v = static_cast<int32_t>(duty * 100000.0);
-
   *(payload_end_.first + 3) = static_cast<uint8_t>((v >> 24) & 0xFF);
   *(payload_end_.first + 4) = static_cast<uint8_t>((v >> 16) & 0xFF);
   *(payload_end_.first + 5) = static_cast<uint8_t>((v >> 8) & 0xFF);
   *(payload_end_.first + 6) = static_cast<uint8_t>(v & 0xFF);
+
+  appendCRC();
 }
 
 /*------------------------------------------------------------------*/
@@ -512,15 +503,20 @@ VescPacketCANSetDuty::VescPacketCANSetDuty(double duty, uint8_t can_id)
 /**
  * @brief Constructor
  **/
-VescPacketCANSetCurrent::VescPacketCANSetCurrent(double current, uint8_t can_id)
-: VescPacketCAN("CANSetCurrent", 5, COMM_SET_CURRENT, can_id)
+VescPacketCANSetCurrent::VescPacketCANSetCurrent(double current, uint8_t can_id) : VescPacket("CANSetCurrent", 7, COMM_FORWARD_CAN)
 {
+  // Set up CAN forward packet structure
+  *(payload_end_.first + 1) = can_id;
+  *(payload_end_.first + 2) = COMM_SET_CURRENT;
+
+  // Pack the current value into the payload
   const int32_t v = static_cast<int32_t>(current * 1000.0);
-
   *(payload_end_.first + 3) = static_cast<uint8_t>((v >> 24) & 0xFF);
   *(payload_end_.first + 4) = static_cast<uint8_t>((v >> 16) & 0xFF);
   *(payload_end_.first + 5) = static_cast<uint8_t>((v >> 8) & 0xFF);
   *(payload_end_.first + 6) = static_cast<uint8_t>(v & 0xFF);
+
+  appendCRC();
 }
 
 /*------------------------------------------------------------------*/
@@ -528,15 +524,20 @@ VescPacketCANSetCurrent::VescPacketCANSetCurrent(double current, uint8_t can_id)
 /**
  * @brief Constructor
  **/
-VescPacketCANSetCurrentBrake::VescPacketCANSetCurrentBrake(double current_brake, uint8_t can_id)
-: VescPacketCAN("CANSetCurrentBrake", 5, COMM_SET_CURRENT_BRAKE, can_id)
+VescPacketCANSetCurrentBrake::VescPacketCANSetCurrentBrake(double current_brake, uint8_t can_id) : VescPacket("CANSetCurrentBrake", 7, COMM_FORWARD_CAN)
 {
+  // Set up CAN forward packet structure
+  *(payload_end_.first + 1) = can_id;
+  *(payload_end_.first + 2) = COMM_SET_CURRENT_BRAKE;
+
+  // Pack the brake current value into the payload
   const int32_t v = static_cast<int32_t>(current_brake * 1000.0);
-
   *(payload_end_.first + 3) = static_cast<uint8_t>((v >> 24) & 0xFF);
   *(payload_end_.first + 4) = static_cast<uint8_t>((v >> 16) & 0xFF);
   *(payload_end_.first + 5) = static_cast<uint8_t>((v >> 8) & 0xFF);
   *(payload_end_.first + 6) = static_cast<uint8_t>(v & 0xFF);
+
+  appendCRC();
 }
 
 /*------------------------------------------------------------------*/
@@ -544,15 +545,20 @@ VescPacketCANSetCurrentBrake::VescPacketCANSetCurrentBrake(double current_brake,
 /**
  * @brief Constructor
  **/
-VescPacketCANSetVelocityERPM::VescPacketCANSetVelocityERPM(double vel_erpm, uint8_t can_id)
-: VescPacketCAN("CANSetVelocityERPM", 5, COMM_SET_ERPM, can_id)
+VescPacketCANSetVelocityERPM::VescPacketCANSetVelocityERPM(double vel_erpm, uint8_t can_id) : VescPacket("CANSetVelocityERPM", 7, COMM_FORWARD_CAN)
 {
+  // Set up CAN forward packet structure
+  *(payload_end_.first + 1) = can_id;
+  *(payload_end_.first + 2) = COMM_SET_ERPM;
+
+  // Pack the velocity value into the payload
   const int32_t v = static_cast<int32_t>(vel_erpm);
-
   *(payload_end_.first + 3) = static_cast<uint8_t>((v >> 24) & 0xFF);
   *(payload_end_.first + 4) = static_cast<uint8_t>((v >> 16) & 0xFF);
   *(payload_end_.first + 5) = static_cast<uint8_t>((v >> 8) & 0xFF);
   *(payload_end_.first + 6) = static_cast<uint8_t>(v & 0xFF);
+
+  appendCRC();
 }
 
 /*------------------------------------------------------------------*/
@@ -560,15 +566,20 @@ VescPacketCANSetVelocityERPM::VescPacketCANSetVelocityERPM(double vel_erpm, uint
 /**
  * @brief Constructor
  **/
-VescPacketCANSetPosition::VescPacketCANSetPosition(double pos, uint8_t can_id)
-: VescPacketCAN("CANSetPosition", 5, COMM_SET_POS, can_id)
+VescPacketCANSetPosition::VescPacketCANSetPosition(double pos, uint8_t can_id) : VescPacket("CANSetPosition", 7, COMM_FORWARD_CAN)
 {
+  // Set up CAN forward packet structure
+  *(payload_end_.first + 1) = can_id;
+  *(payload_end_.first + 2) = COMM_SET_POS;
+
+  // Pack the position value into the payload
   const int32_t v = static_cast<int32_t>(pos * 1000000.0);
-
   *(payload_end_.first + 3) = static_cast<uint8_t>((v >> 24) & 0xFF);
   *(payload_end_.first + 4) = static_cast<uint8_t>((v >> 16) & 0xFF);
   *(payload_end_.first + 5) = static_cast<uint8_t>((v >> 8) & 0xFF);
   *(payload_end_.first + 6) = static_cast<uint8_t>(v & 0xFF);
+
+  appendCRC();
 }
 
 /*------------------------------------------------------------------*/
@@ -576,13 +587,18 @@ VescPacketCANSetPosition::VescPacketCANSetPosition(double pos, uint8_t can_id)
 /**
  * @brief Constructor
  **/
-VescPacketCANSetServoPos::VescPacketCANSetServoPos(double servo_pos, uint8_t can_id)
-: VescPacketCAN("CANSetServoPos", 5, COMM_SET_SERVO_POS, can_id)
+VescPacketCANSetServoPos::VescPacketCANSetServoPos(double servo_pos, uint8_t can_id) : VescPacket("CANSetServoPos", 4, COMM_FORWARD_CAN)
 {
-  uint16_t v = static_cast<uint16_t>(servo_pos * 1000.0);
+  // Set up CAN forward packet structure
+  *(payload_end_.first + 1) = can_id;
+  *(payload_end_.first + 2) = COMM_SET_SERVO_POS;
 
+  // Pack the servo position value into the payload
+  uint16_t v = static_cast<uint16_t>(servo_pos * 1000.0);
   *(payload_end_.first + 3) = static_cast<uint8_t>((v >> 8) & 0xFF);
   *(payload_end_.first + 4) = static_cast<uint8_t>(v & 0xFF);
+
+  appendCRC();
 }
 
 }  // namespace vesc_driver

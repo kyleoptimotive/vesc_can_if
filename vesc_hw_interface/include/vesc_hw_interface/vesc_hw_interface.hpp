@@ -29,6 +29,7 @@
 #include "vesc_driver/vesc_interface.hpp"
 #include "vesc_hw_interface/vesc_servo_controller.hpp"
 #include "vesc_hw_interface/vesc_wheel_controller.hpp"
+#include <vector>
 
 namespace vesc_hw_interface
 {
@@ -62,6 +63,7 @@ private:
 
   std::string joint_name_, command_mode_, port_;
   std::string joint_type_;
+  std::vector<uint8_t> can_ids_;
 
   double command_;
   double position_, velocity_, effort_;  // joint states

@@ -143,6 +143,18 @@ CallbackReturn VescHwInterface::on_init(const hardware_interface::HardwareInfo& 
     }
   }
 
+  // Initialize CAN IDs for each joint
+  can_ids_.clear();  // Clear any existing CAN IDs
+  can_ids_.push_back(0);  // Set default CAN ID to 0
+
+  if (joint.parameters.find("num_can_ids") != joint.parameters.end()) {
+    int num_can_ids = std::stoi(joint.parameters.at("num_can_ids"));
+    RCLCPP_INFO(rclcpp::get_logger("VescHwInterface"), "Adding %d CAN IDs", num_can_ids);
+    for (int i = 1; i < num_can_ids; i++) {
+      can_ids_.push_back(static_cast<uint8_t>(i));
+    }
+  }
+
   RCLCPP_INFO(rclcpp::get_logger("VescHwInterface"), "Successfully Initialized!");
 
   return CallbackReturn::SUCCESS;
@@ -327,8 +339,12 @@ hardware_interface::return_type VescHwInterface::write(const rclcpp::Time& /*tim
     const double command_rpm = command_ * 60.0 / 2.0 / M_PI / gear_ratio_;
     const double command_erpm = command_rpm * static_cast<double>(num_rotor_poles_) / 2;
 
-    // sends a reference velocity command
-    vesc_interface_->setSpeed(command_erpm);
+    // Sends a reference velocity command to all CAN IDs
+    // if no IDS are configured, default of 0 is used
+    // which sends the command to VESC over serial
+    for (const auto& can_id : can_ids_) {
+      vesc_interface_->setSpeed(command_erpm, can_id);
+    }
   }
   else if (command_mode_ == "velocity_duty")
   {
@@ -345,16 +361,24 @@ hardware_interface::return_type VescHwInterface::write(const rclcpp::Time& /*tim
     // converts the command unit: Nm or N -> A
     const double command_current = command_ * gear_ratio_ / torque_const_;
 
-    // sends a reference current command
-    vesc_interface_->setCurrent(command_current);
+    // Sends a reference current command to all CAN IDs
+    // if no IDS are configured, default of 0 is used
+    // which sends the command to VESC over serial
+    for (const auto& can_id : can_ids_) {
+      vesc_interface_->setCurrent(command_current, can_id);
+    }
   }
   else if (command_mode_ == "effort_duty")
   {
     command_ = std::max(-1.0, command_);
     command_ = std::min(1.0, command_);
 
-    // sends a  duty command
-    vesc_interface_->setDutyCycle(command_);
+    // Sends a duty command to all CAN IDs
+    // if no IDS are configured, default of 0 is used
+    // which sends the command to VESC over serial
+    for (const auto& can_id : can_ids_) {
+      vesc_interface_->setDutyCycle(command_, can_id);
+    }
   }
   return hardware_interface::return_type::OK;
 }

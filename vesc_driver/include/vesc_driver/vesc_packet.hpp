@@ -134,8 +134,8 @@ public:
   }
 
 protected:
-  VescPacket(const std::string & name, const int16_t payload_size, const int16_t payload_id);
-  VescPacket(const std::string & name, std::shared_ptr<VescFrame> raw);
+  VescPacket(const std::string& name, const int16_t payload_size, const int16_t payload_id);
+  VescPacket(const std::string& name, std::shared_ptr<VescFrame> raw);
   void appendCRC();
 
 private:
@@ -317,7 +317,7 @@ public:
 /**
  * @brief CAN packet for setting reference angular velocity
  */
-class VescPacketCANSetVelocityERPM : public VescPacketCAN
+class VescPacketCANSetVelocityERPM : public VescPacket
 {
 public:
   VescPacketCANSetVelocityERPM(double speed, uint8_t can_id);
