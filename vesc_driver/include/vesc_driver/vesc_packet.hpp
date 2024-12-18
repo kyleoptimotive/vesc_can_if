@@ -279,18 +279,9 @@ public:
 /*------------------------------------------------------------------*/
 
 /**
- * @brief Base class for CAN forwarding packets
- */
-class VescPacketCAN : public VescPacket
-{
-protected:
-  VescPacketCAN(const std::string & name, int payload_size, int payload_id, uint8_t can_id);
-};
-
-/**
  * @brief CAN packet for setting duty cycle
  */
-class VescPacketCANSetDuty : public VescPacketCAN
+class VescPacketCANSetDuty : public VescPacket
 {
 public:
   VescPacketCANSetDuty(double duty, uint8_t can_id);
@@ -299,7 +290,7 @@ public:
 /**
  * @brief CAN packet for setting reference current
  */
-class VescPacketCANSetCurrent : public VescPacketCAN
+class VescPacketCANSetCurrent : public VescPacket
 {
 public:
   VescPacketCANSetCurrent(double current, uint8_t can_id);
@@ -308,7 +299,7 @@ public:
 /**
  * @brief CAN packet for setting current brake
  */
-class VescPacketCANSetCurrentBrake : public VescPacketCAN
+class VescPacketCANSetCurrentBrake : public VescPacket
 {
 public:
   VescPacketCANSetCurrentBrake(double current_brake, uint8_t can_id);
@@ -326,7 +317,7 @@ public:
 /**
  * @brief CAN packet for setting a reference position
  */
-class VescPacketCANSetPosition : public VescPacketCAN
+class VescPacketCANSetPosition : public VescPacket
 {
 public:
   VescPacketCANSetPosition(double position, uint8_t can_id);
@@ -335,7 +326,7 @@ public:
 /**
  * @brief CAN packet for setting a servo position
  */
-class VescPacketCANSetServoPos : public VescPacketCAN
+class VescPacketCANSetServoPos : public VescPacket
 {
 public:
   VescPacketCANSetServoPos(double servo, uint8_t can_id);
